@@ -36,8 +36,9 @@
 var DEBUG = false;
 
 var log;
+var console = require("console");
+
 if (DEBUG) {
-    var console = require("console");
     log = function log() {
         process.stderr.write("IJS: ");
         console.error.apply(this, arguments);
@@ -50,7 +51,6 @@ if (DEBUG) {
     }
 }
 
-var console = require("console");
 var exec = require("child_process").exec;
 var fs = require("fs");
 var os = require("os");
