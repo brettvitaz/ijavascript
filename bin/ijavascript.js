@@ -82,9 +82,9 @@ var usage = (
     "                            (default = current working directory)\n" +
     "    --version                     show IJavascript version\n" +
     "\n" +
-    "and any other options recognised by the IPython notebook; run:\n" +
+    "and any other options recognised by the Jupyter notebook; run:\n" +
     "\n" +
-    "    ipython notebook --help\n" +
+    "    jupyter notebook --help\n" +
     "\n" +
     "for a full list.\n"
 );
@@ -164,7 +164,7 @@ function parseCommandArgs(context) {
         context.path.kernel,
     ];
     context.args.frontend = [
-        "ipython",
+        "jupyter",
         "notebook",
     ];
 
