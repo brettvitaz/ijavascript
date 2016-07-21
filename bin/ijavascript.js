@@ -69,8 +69,9 @@ var usage = (
     "\n" +
     "The recognised options are:\n" +
     "\n" +
+    "    --help                        show IJavascript and notebook help\n" +
     "    --ijs-debug                   enable debug log level\n" +
-    "    --ijs-help                    show this help\n" +
+    "    --ijs-help                    show IJavascript help\n" +
     "    --ijs-hide-undefined          do not show undefined results\n" +
     "    --ijs-install=[local|global]  install IJavascript kernel\n" +
     "    --ijs-install-kernel          same as --ijs-install=local\n" +
@@ -111,6 +112,7 @@ var usage = (
  * @property {String}   context.protocol.version      Protocol version
  * @property {Integer}  context.protocol.majorVersion Protocol major version
  * @property            context.frontend
+ * @property {Error}    context.frontend.error        Frontend error
  * @property {String}   context.frontend.version      Frontend version
  * @property {Integer}  context.frontend.majorVersion Frontend major version
  */
@@ -131,7 +133,7 @@ var context = {
 setPaths(context);
 readPackageJson(context);
 parseCommandArgs(context);
-setFrontendInfoAsync(context, function() {
+setJupyterInfoAsync(context, function() {
     setProtocol(context);
 
     installKernelAsync(context, function() {
@@ -169,7 +171,11 @@ function parseCommandArgs(context) {
     ];
 
     process.argv.slice(2).forEach(function(e) {
-        if (e === "--ijs-debug") {
+        if (e === "--help") {
+            console.log(usage);
+            context.args.frontend.push(e);
+
+        } else if (e === "--ijs-debug") {
             context.flag.debug = DEBUG = true;
             context.args.kernel.push("--debug");
 
@@ -234,16 +240,48 @@ function parseCommandArgs(context) {
     context.args.kernel.push("{connection_file}");
 }
 
-function setFrontendInfoAsync(context, callback) {
-    exec("ipython --version", function(error, stdout, stderr) {
+function setJupyterInfoAsync(context, callback) {
+    exec("jupyter --version", function(error, stdout, stderr) {
         if (error) {
-            console.error("Error running `ipython --version`");
-            console.error(error.toString());
-            if (stderr) console.error(stderr.toString());
+            context.frontend.error = error;
+            setIPythonInfoAsync(context, callback);
+            return;
+        }
+
+        context.args.frontend[0] = "jupyter";
+        context.frontend.version = stdout.toString().trim();
+        context.frontend.majorVersion = parseInt(
+            context.frontend.version.split(".")[0]
+        );
+        if (isNaN(context.frontend.majorVersion)) {
+            console.error(
+                "Error parsing Jupyter version:",
+                context.version.frontend
+            );
             log("CONTEXT:", context);
             process.exit(1);
         }
 
+        if (callback) {
+            callback();
+        }
+    });
+}
+
+function setIPythonInfoAsync(context, callback) {
+    exec("ipython --version", function(error, stdout, stderr) {
+        if (error) {
+            if (context.frontend.error) {
+                console.error("Error running `jupyter --version`");
+                console.error(context.frontend.error.toString());
+            }
+            console.error("Error running `ipython --version`");
+            console.error(error.toString());
+            log("CONTEXT:", context);
+            process.exit(1);
+        }
+
+        context.args.frontend[0] = "ipython";
         context.frontend.version = stdout.toString().trim();
         context.frontend.majorVersion = parseInt(
             context.frontend.version.split(".")[0]
@@ -285,7 +323,7 @@ function setProtocol(context) {
 
     if (context.frontend.majorVersion < 3 &&
         context.protocol.majorVersion >= 5) {
-        console.warn("Warning: Protocol v5+ requires IPython v3+");
+        console.warn("Warning: Protocol v5+ requires Jupyter v3+");
     }
 }
 
@@ -293,7 +331,7 @@ function installKernelAsync(context, callback) {
     if (context.frontend.majorVersion < 3) {
         if (context.flag.install) {
             console.error(
-                "Error: Installation of kernel specs requires IPython v3+"
+                "Error: Installation of kernel specs requires Jupyter v3+"
             );
         }
 
